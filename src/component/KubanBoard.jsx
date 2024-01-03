@@ -5,10 +5,7 @@ import axios from "axios";
 import ColumnContainer from "./ColumnContainer";
 import {
   DndContext,
-  DragEndEvent,
-  DragOverEvent,
   DragOverlay,
-  DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -32,7 +29,7 @@ const defaultCols = [
   },
 ];
 
-const defaultTasks= [
+const defaultTasks = [
   {
     id: "1",
     columnId: "todo",
@@ -41,8 +38,7 @@ const defaultTasks= [
   {
     id: "2",
     columnId: "todo",
-    content:
-      "Develop user registration functionality with ",
+    content: "Develop user registration functionality with ",
   },
   {
     id: "3",
@@ -102,12 +98,8 @@ const defaultTasks= [
 ];
 
 function KanbanBoard() {
-
-  
-
   const [columns, setColumns] = useState(defaultCols);
   const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
-  console.log(columnsId);
 
   const [tasks, setTasks] = useState(defaultTasks);
 
@@ -115,9 +107,10 @@ function KanbanBoard() {
 
   const [activeTask, setActiveTask] = useState(null);
 
-  
+  const [updateId, setUpdateId] = useState(null);
+  const [updateContent, setUpdateContent] = useState(null);
 
-
+  const [dragActiveId, setDragActiveId] = useState(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -127,22 +120,32 @@ function KanbanBoard() {
     })
   );
 
-  const getData= async()=>{
+  const getData = async () => {
     try {
-      const {data} = await axios.get("http://localhost:8000/gettodos")
-      console.log(data.data);
-      setColumns(data.data)
+      const { data } = await axios.get("http://localhost:8000/gettodos");
+
+      setColumns(data?.data);
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-    
-  }
+  };
 
-  useEffect(()=>{
+  useEffect(() => {
     getData();
-},[])
+  }, []);
 
- 
+  const getTask = async () => {
+    try {
+      const { data } = await axios.get("http://localhost:8000/gettask");
+      setTasks(data?.data);
+    } catch (error) {
+      return console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    getTask();
+  }, []);
 
   return (
     <div
@@ -163,12 +166,10 @@ function KanbanBoard() {
         onDragEnd={onDragEnd}
         onDragOver={onDragOver}
       >
-   
-       {/* m-auto flex-row gap-4 */}
+        {/* m-auto flex-row gap-4 */}
         <div className="m-auto flex">
           {/* flex-row gap-4 */}
-          <div className="m-auto flex "> 
-       
+          <div className="m-auto flex ">
             <SortableContext items={columnsId}>
               {columns.map((col) => (
                 <ColumnContainer
@@ -180,10 +181,14 @@ function KanbanBoard() {
                   deleteTask={deleteTask}
                   updateTask={updateTask}
                   tasks={tasks.filter((task) => task.columnId === col.id)}
+                  updateId={updateId}
+                  updateCon={updateContent}
+                  dragActiveId={dragActiveId}
                 />
               ))}
             </SortableContext>
           </div>
+
           <button
             onClick={() => {
               createNewColumn();
@@ -208,7 +213,6 @@ function KanbanBoard() {
             Add Column
           </button>
         </div>
-  
 
         {createPortal(
           <DragOverlay>
@@ -230,7 +234,6 @@ function KanbanBoard() {
                 task={activeTask}
                 deleteTask={deleteTask}
                 updateTask={updateTask}
-             
               />
             )}
           </DragOverlay>,
@@ -240,26 +243,20 @@ function KanbanBoard() {
     </div>
   );
 
-  // const createdata=useEffect(()=>{
-
-  // })
-
- async function  createTask(columnId) {
+  async function createTask(columnId) {
     try {
       const newTask = {
-        id: generateId(),
+        id: generateId() ,
         columnId,
         content: ` TodoTask ${tasks.length + 1}`,
       };
-         const CreateData=  await axios.post("http://localhost:8000/todustask", newTask)
-         console.log(CreateData);
+      await axios.post("http://localhost:8000/todustask", newTask);
+
       setTasks([...tasks, newTask]);
       return newTask;
-
     } catch (error) {
       console.log(error.message);
     }
-    
   }
 
   function deleteTask(id) {
@@ -267,32 +264,45 @@ function KanbanBoard() {
     setTasks(newTasks);
   }
 
-  function updateTask(id, content) {
+  async function updateTask(id, content) {
+    console.log(id);
     const newTasks = tasks.map((task) => {
       if (task.id !== id) return task;
-    
-      return { ...task, content,  };
+      setUpdateId(id);
+      setUpdateContent(content);
+      return { ...task, content };
     });
-   
 
     setTasks(newTasks);
   }
 
-  function createNewColumn() {
-    const columnToAdd = {
-      id: generateId(),
-      title: `Todo List ${columns.length + 1}`,
-    };
+  //  Todu Column
+  async function createNewColumn() {
+    try {
+      const columnToAdd = {
+        id: `todo-${columns.length + 1}`,
+        title: `Todo List ${columns.length + 1}`,
+      };
 
-    setColumns([...columns, columnToAdd]);
+      await axios.post("http://localhost:8000/todocreate", columnToAdd);
+
+      setColumns([...columns, columnToAdd]);
+    } catch (error) {
+      return console.log({ status: "createcolumn", msg: error });
+    }
   }
 
-  function deleteColumn(id) {
+  async function deleteColumn(id) {
     const filteredColumns = columns.filter((col) => col.id !== id);
     setColumns(filteredColumns);
 
     const newTasks = tasks.filter((t) => t.columnId !== id);
     setTasks(newTasks);
+    try {
+      await axios.delete(`http://localhost:8000/deletelist/${id}`);
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   function updateColumn(id, title) {
@@ -331,8 +341,6 @@ function KanbanBoard() {
     const isActiveAColumn = active.data.current?.type === "Column";
     if (!isActiveAColumn) return;
 
-    console.log("DRAG END");
-
     setColumns((columns) => {
       const activeColumnIndex = columns.findIndex((col) => col.id === activeId);
 
@@ -358,11 +366,13 @@ function KanbanBoard() {
 
     // Im dropping a Task over another Task
     if (isActiveATask && isOverATask) {
+      setDragActiveId(activeId);
+
       setTasks((tasks) => {
         const activeIndex = tasks.findIndex((t) => t.id === activeId);
         const overIndex = tasks.findIndex((t) => t.id === overId);
 
-        if (tasks[activeIndex].columnId != tasks[overIndex].columnId) {
+        if (tasks[activeIndex].columnId !== tasks[overIndex].columnId) {
           // Fix introduced after video recording
           tasks[activeIndex].columnId = tasks[overIndex].columnId;
           return arrayMove(tasks, activeIndex, overIndex - 1);

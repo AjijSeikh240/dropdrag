@@ -1,21 +1,10 @@
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import TrashIcon from "../icon/TrashIcon";
-// import { Column, Id, Task } from "../types";
+
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import PlusIcon from "../icon/PlusIcon";
 import TaskCard from "./TaskCard";
-
-// interface Props {
-//   column: Column;
-//   deleteColumn: (id: Id) => void;
-//   updateColumn: (id: Id, title: string) => void;
-
-//   createTask: (columnId: Id) => void;
-//   updateTask: (id: Id, content: string) => void;
-//   deleteTask: (id: Id) => void;
-//   tasks: Task[];
-// }
 
 function ColumnContainer({
   column,
@@ -25,13 +14,18 @@ function ColumnContainer({
   tasks,
   deleteTask,
   updateTask,
+  updateCon,
+  updateId,
+  dragActiveId,
 }) {
   const [editMode, setEditMode] = useState(false);
-  const columnCount=column.title.split("-")
+  const columnCount = column.title.split("-");
 
   const tasksIds = useMemo(() => {
     return tasks.map((task) => task.id);
   }, [tasks]);
+
+  
 
   const {
     setNodeRef,
@@ -145,6 +139,7 @@ function ColumnContainer({
             />
           )}
         </div>
+
         <button
           onClick={() => {
             deleteColumn(column.id);
@@ -159,6 +154,7 @@ function ColumnContainer({
         "
         >
           <TrashIcon />
+          {/* delete icon */}
         </button>
       </div>
 
@@ -171,6 +167,9 @@ function ColumnContainer({
               task={task}
               deleteTask={deleteTask}
               updateTask={updateTask}
+              updateId={updateId}
+              updateCon={updateCon}
+              dragActiveId={dragActiveId}
             />
           ))}
         </SortableContext>
@@ -178,9 +177,7 @@ function ColumnContainer({
       {/* Column footer */}
       <button
         className="flex gap-2 items-center border-columnBackgroundColor border-2 rounded-md p-4 border-x-columnBackgroundColor hover:bg-mainBackgroundColor hover:text-rose-500 active:bg-black"
-        onClick={() => {
-          createTask(column.id);
-        }}
+        onClick={() => createTask(column.id)}
       >
         <PlusIcon />
         Add task
